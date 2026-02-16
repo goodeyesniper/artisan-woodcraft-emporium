@@ -10,14 +10,37 @@ import { useState } from 'react';
 export default function Contact() {
   const [form, setForm] = useState({ name: '', email: '', message: '' });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!form.name.trim() || !form.email.trim() || !form.message.trim()) {
       toast.error('Please fill in all fields.');
       return;
     }
-    toast.success('Message sent! We\'ll get back to you soon.');
-    setForm({ name: '', email: '', message: '' });
+
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/contact-email`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify(form),
+        }
+      );
+
+      if (!res.ok) {
+        toast.error("Failed to send message.");
+        return;
+      }
+
+      toast.success("Message sent! We'll get back to you soon.");
+      setForm({ name: '', email: '', message: '' });
+    } catch (err) {
+      toast.error("Something went wrong.");
+    }
   };
 
   const update = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>

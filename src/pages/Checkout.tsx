@@ -20,16 +20,46 @@ export default function Checkout() {
     return null;
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!form.name.trim() || !form.email.trim() || !form.phone.trim() || !form.address.trim()) {
       toast.error('Please fill in all required fields.');
       return;
     }
-    placeOrder(items, form);
-    clearCart();
-    toast.success('Order placed successfully! We will contact you shortly.');
-    navigate('/');
+
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+          },
+          body: JSON.stringify({
+            items: items.map(i => ({
+              id: i.product.id,
+              name: i.product.name,
+              price: i.product.price,
+              quantity: i.quantity,
+              image: i.product.image,
+            })),
+            customer: form,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (data.url) {
+        window.location.href = data.url; // Redirect to Stripe Checkout
+      } else {
+        toast.error("Unable to start checkout.");
+      }
+    } catch (err) {
+      toast.error("Something went wrong.");
+    }
   };
 
   const update = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>

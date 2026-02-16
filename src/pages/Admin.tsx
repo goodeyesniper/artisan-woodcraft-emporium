@@ -10,12 +10,14 @@ import { Link } from 'react-router-dom';
 import { useStore } from '@/context/StoreContext';
 import { toast } from 'sonner';
 import type { Product } from '@/lib/types';
+import { logout } from '@/lib/auth'
 
 function ProductForm({ initial, onSave, onCancel }: {
   initial?: Product;
-  onSave: (data: Omit<Product, 'id'>) => void;
+  onSave: (data: Omit<Product, 'id'>, file: File | null) => void;
   onCancel: () => void;
 }) {
+  const [file, setFile] = useState<File | null>(null)
   const [name, setName] = useState(initial?.name ?? '');
   const [price, setPrice] = useState(initial?.price?.toString() ?? '');
   const [category, setCategory] = useState(initial?.category ?? '');
@@ -24,6 +26,7 @@ function ProductForm({ initial, onSave, onCancel }: {
   const [specsText, setSpecsText] = useState(
     initial ? Object.entries(initial.specs).map(([k, v]) => `${k}: ${v}`).join('\n') : ''
   );
+  const [featured, setFeatured] = useState(initial?.featured ?? false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +39,18 @@ function ProductForm({ initial, onSave, onCancel }: {
       const idx = line.indexOf(':');
       if (idx > 0) specs[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
     });
-    onSave({ name, price: parseFloat(price), category, description, image, specs, featured: initial?.featured ?? false });
+    onSave(
+      {
+        name,
+        price: parseFloat(price),
+        category,
+        description,
+        image, // fallback if no file
+        specs,
+        featured,
+      },
+      file
+    );
   };
 
   return (
@@ -57,8 +71,13 @@ function ProductForm({ initial, onSave, onCancel }: {
           <Input value={category} onChange={e => setCategory(e.target.value)} className="mt-1" maxLength={50} />
         </div>
         <div>
-          <Label className="font-body text-foreground">Image URL</Label>
-          <Input value={image} onChange={e => setImage(e.target.value)} className="mt-1" maxLength={500} />
+          <Label className="font-body text-foreground">Product Image *</Label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            className="mt-1"
+          />
         </div>
       </div>
       <div>
@@ -69,9 +88,24 @@ function ProductForm({ initial, onSave, onCancel }: {
         <Label className="font-body text-foreground">Specs (one per line, "Key: Value")</Label>
         <Textarea value={specsText} onChange={e => setSpecsText(e.target.value)} className="mt-1" rows={4} placeholder="Material: Oak&#10;Dimensions: 12in × 8in" maxLength={1000} />
       </div>
-      <div className="flex gap-3">
-        <Button type="submit" className="bg-primary text-primary-foreground hover:bg-primary/90 font-body">Save</Button>
-        <Button type="button" variant="outline" onClick={onCancel} className="font-body">Cancel</Button>
+      <div className="flex gap-3 items-center">
+        <Button type="submit" className="bg-primary text-primary-foreground hover:bg-primary/90 font-body">
+          Save
+        </Button>
+
+        <Button type="button" variant="outline" onClick={onCancel} className="font-body">
+          Cancel
+        </Button>
+
+        <div className="flex items-center gap-2 ml-auto">
+          <input
+            type="checkbox"
+            checked={featured}
+            onChange={(e) => setFeatured(e.target.checked)}
+            className="w-4 h-4"
+          />
+          <Label className="font-body text-foreground">Feature this product</Label>
+        </div>
       </div>
     </form>
   );
@@ -87,9 +121,25 @@ export default function Admin() {
       <header className="bg-primary text-primary-foreground py-4">
         <div className="container mx-auto px-4 flex items-center justify-between">
           <h1 className="font-display text-xl font-bold">Admin Dashboard</h1>
-          <Link to="/" className="flex items-center gap-2 text-sm font-body opacity-80 hover:opacity-100">
-            <ArrowLeft size={16} /> Back to Site
-          </Link>
+
+          <div className="flex items-center gap-4">
+            <Link
+              to="/"
+              className="flex items-center gap-2 text-sm font-body opacity-80 hover:opacity-100"
+            >
+              <ArrowLeft size={16} /> Back to Site
+            </Link>
+
+            <Button
+              onClick={async () => {
+                await logout()
+                window.location.href = '/admin/login'
+              }}
+              className="bg-accent text-accent-foreground hover:bg-accent/90 font-body"
+            >
+              Logout
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -114,7 +164,10 @@ export default function Admin() {
             {adding && (
               <div className="mb-6">
                 <ProductForm
-                  onSave={data => { addProduct(data); setAdding(false); toast.success('Product added!'); }}
+                  onSave={(data, file) => {
+                    addProduct(data, file)
+                    setAdding(false)
+                  }}
                   onCancel={() => setAdding(false)}
                 />
               </div>
@@ -126,12 +179,15 @@ export default function Admin() {
                   {editing === p.id ? (
                     <ProductForm
                       initial={p}
-                      onSave={data => { updateProduct(p.id, data); setEditing(null); toast.success('Product updated!'); }}
+                      onSave={(data, file) => {
+                        updateProduct(p.id, data, file)
+                        setEditing(null)
+                      }}
                       onCancel={() => setEditing(null)}
                     />
                   ) : (
                     <div className="flex items-center gap-4 bg-card rounded-lg border border-border p-4">
-                      {p.image && <img src={p.image} alt={p.name} className="w-16 h-16 rounded object-cover" />}
+                      {p.image && <img src={p.image || '/placeholder.png'} alt={p.name} className="w-16 h-16 rounded object-cover" />}
                       <div className="flex-1 min-w-0">
                         <h3 className="font-display font-semibold text-foreground truncate">{p.name}</h3>
                         <p className="text-sm text-muted-foreground font-body">{p.category} • ${p.price}</p>
@@ -164,7 +220,7 @@ export default function Admin() {
                       <div>
                         <h3 className="font-display font-semibold text-foreground">Order #{order.id.slice(-6)}</h3>
                         <p className="text-sm text-muted-foreground font-body">
-                          {new Date(order.createdAt).toLocaleDateString()} • {order.customer.name}
+                          {new Date(order.createdAt).toLocaleDateString()} • {order.customer?.name ?? "Unknown Customer"}
                         </p>
                       </div>
                       <Badge variant={order.status === 'fulfilled' ? 'default' : order.status === 'processing' ? 'secondary' : 'outline'} className="font-body capitalize">
@@ -172,15 +228,15 @@ export default function Admin() {
                       </Badge>
                     </div>
                     <div className="text-sm font-body text-muted-foreground space-y-1">
-                      <p>📧 {order.customer.email} • 📞 {order.customer.phone}</p>
-                      <p>📍 {order.customer.address}</p>
-                      {order.customer.notes && <p>📝 {order.customer.notes}</p>}
+                      <p>📧 {order.customer?.email ?? "No email"} • 📞 {order.customer?.phone ?? "No phone"}</p>
+                      <p>📍 {order.customer?.address ?? "No address provided"}</p>
+                      {order.customer?.notes && <p>📝 {order.customer.notes}</p>}
                     </div>
                     <div className="border-t border-border pt-3 space-y-1">
-                      {order.items.map(({ product, quantity }) => (
-                        <div key={product.id} className="flex justify-between text-sm font-body">
-                          <span className="text-foreground">{product.name} × {quantity}</span>
-                          <span className="text-foreground">${(product.price * quantity).toFixed(2)}</span>
+                      {order.items?.map((item, i) => (
+                        <div key={i} className="flex justify-between text-sm font-body">
+                          <span className="text-foreground">{item.name} × {item.quantity}</span>
+                          <span className="text-foreground">${(item.price * item.quantity).toFixed(2)}</span>
                         </div>
                       ))}
                       <div className="flex justify-between font-bold text-foreground font-display pt-2 border-t border-border/50">
