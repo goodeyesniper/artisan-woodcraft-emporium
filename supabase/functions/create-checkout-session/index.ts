@@ -35,8 +35,11 @@ serve(async (req) => {
       mode: "payment",
       payment_method_types: ["card"],
       line_items,
-      success_url: "http://localhost:8080/success",
-      cancel_url: "http://localhost:8080/cancel",
+      success_url: "https://ryans-woodcraft.vercel.app/success",
+      cancel_url: "https://ryans-woodcraft.vercel.app/cancel",
+      // Activate for development
+      // success_url: "http://localhost:8080/success",
+      // cancel_url: "http://localhost:8080/cancel",
       metadata: {
         customer_name: customer.name,
         customer_email: customer.email,
