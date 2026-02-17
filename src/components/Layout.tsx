@@ -107,7 +107,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <h4 className="font-display font-semibold mb-3">Contact</h4>
               <div className="space-y-2 text-sm opacity-80 font-body">
                 <p>ryanshandicraft@email.com</p>
-                <p>+1 (555) 123-4567</p>
+                <p>+64 027 393 4412</p>
               </div>
             </div>
           </div>

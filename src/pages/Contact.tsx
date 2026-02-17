@@ -63,8 +63,8 @@ export default function Contact() {
               </p>
               {[
                 { icon: Mail, label: 'Email', value: 'ryanshandicraft@email.com' },
-                { icon: Phone, label: 'Phone', value: '+1 (555) 123-4567' },
-                { icon: MapPin, label: 'Workshop', value: '123 Woodcraft Lane, Portland, OR' },
+                { icon: Phone, label: 'Phone', value: '+64 027 393 4412' },
+                { icon: MapPin, label: 'Workshop', value: '4 Oaks Lane, Motueka New Zealand 7120' },
               ].map(({ icon: Icon, label, value }) => (
                 <div key={label} className="flex items-start gap-4">
                   <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
